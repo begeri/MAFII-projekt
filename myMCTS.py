@@ -10,7 +10,7 @@ c=2
 #root node:
 root=0
 #VIRTUAL BOARD
-board = chess.Board()
+vboard = chess.Board()
 
 #Szótár ami a meglátogatott csúcsokat tartalmazza
 nodes={}
@@ -27,8 +27,8 @@ class Node():
     #gyerekek a fában (nodeok)
     self.children=[]
     #még nem nézett lépések
-    board.set_fen(state)
-    self.not_visited=list(board.legal_moves)
+    vboard.set_fen(state)
+    self.not_visited=list(vboard.legal_moves)
     #szülő a fában
     self.parent=None
     #number of simulations
@@ -55,17 +55,17 @@ def rollout(node):
   '''
   Plays out a random game, on the given node's board
   '''
-  board.set_fen(node.state)
+  vboard.set_fen(node.state)
 
-  while(board.outcome()==None):
-    legal_moves=list(board.legal_moves)
-    board.push(random.choice(legal_moves)) 
+  while(vboard.outcome()==None):
+    legal_moves=list(vboard.legal_moves)
+    vboard.push(random.choice(legal_moves)) 
 
   
-  if board.result()=='1/2-1/2':
+  if vboard.result()=='1/2-1/2':
     return 0.5
 
-  winner = (board.result()=='1-0')
+  winner = (vboard.result()=='1-0')
 
   if winner==play_as:
     return 1
@@ -85,20 +85,20 @@ def selection(node):
       #Erre kell majd meghívni az expansiont
       # Selection proceeds until you reach a position where not all of the child positions have statistics recorded.
   
-  else:
-    #A gyerekekből a max UCB értékűt kiválasztani
-    maxUCB_child=max(node.children, key=lambda i: ucb(i))
-    #és meghívni rá a selection-t
-    selection(maxUCB_child)
+  #A gyerekekből a max UCB értékűt kiválasztani
+  maxUCB_child=max(node.children, key=lambda i: ucb(i))
+  #és meghívni rá a selection-t
+  print('kivalasztott gyerek\n', maxUCB_child, '\n', type(maxUCB_child))
+  return selection(maxUCB_child)
 
 def expansion(node):
   #move-ot kiválasztani, és törölni a moveot a parent.not_visited listából
   move=random.choice(node.not_visited)
   node.not_visited.remove(move)
   #ebből egy csúcsot csinálni, hozzáadni a fához
-  board.set_fen(node.state)
-  board.push(move)
-  child=Node(board.fen())
+  vboard.set_fen(node.state)
+  vboard.push(move)
+  child=Node(vboard.fen())
   #beállítani a szülűnek ezt
   child.parent=node
   #megjegyezni, hogy érkeztünk ide
@@ -127,10 +127,6 @@ def make_move(board, time_limit):
   while datetime.datetime.utcnow() - begin < datetime.timedelta(seconds=time_limit):
     new_child=expansion(selection(root))
     rollback(new_child, rollout(new_child))
-    #debugging part:
-    print(root)
-    if len(root.not_visited) < 1:
-      print(root.children[0])
   
   best_child = max(root.children, key=lambda i: i.w/i.N)
   return best_child.action
