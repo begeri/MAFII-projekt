@@ -60,8 +60,11 @@ def eval(node):
   '''
   Világosként megnézzük, hogy nyertünk-e, ha nem összeadjuk a pályán lévő figurák értékét. Így értékeljük az állást.
   '''
+  #A győzelem értéke:
+  winWt=10
+  #Ha vége a játéknak, adjuk vissza a győzelem hírét a győzelem súlyával!
   if node.outcome != None:
-    return node.outcome
+    return node.outcome*winWt
   p=pieces(node.state)
   kingWt=200
   queenWt=9
@@ -125,11 +128,11 @@ def expansion(node):
   return child
 
 def rollback(node, result):
-   '''
+  '''
   Egy új kiértékeléssel frissítjük a fában az input csúcsot és az őseit.
   '''
-  node.w += result
-  node.N += 1
+  node.w +=result
+  node.N +=1
   if node.parent!=None:
     rollback(node.parent, result)
 
@@ -157,12 +160,18 @@ def make_move(board, time_limit):
   while datetime.datetime.utcnow() - begin < datetime.timedelta(seconds=time_limit):
     #A selection megad egy olyan leszármazottat, aminek van még nem vizsgált lépése
     child=selection(root)
+    #Ha nincs vége a játéknak
     if child.outcome==None:
       #Létrehoz egy eddig nem vizsgált játékállást
       new_child = expansion(child)
+    #Ha vége van a játéknak
+    else:
+      new_child=child
+      pass
     #Frissíti az új gyerek őseinek az értékelését az új gyerek értékétől függően
     rollback(new_child, play_as*eval(new_child))
-  #print('#simulations = ', root.N) - testing stuff
+    
+  print('#simulations = ', root.N)# - testing stuff
   best_child = max(root.children, key=lambda i: i.w/i.N)
-  #print('best_eval', play_as*eval(best_child)) - testing stuff
+  print('best_eval', play_as*eval(best_child))# - testing stuff
   return best_child.action
