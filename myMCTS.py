@@ -11,21 +11,30 @@ vboard = chess.Board()
 play_as=None
 
 class Node():
+  '''
+  Csúcsosztály, amikkel lehet fát építeni. 
+  '''
   def __init__(self, state):
-    #milyen játékállás ez, chess-Board típusó objektum
+    #string típusó objektum, FEN kódolással a játékállás
     self.state=state
-    #gyerekek a fában (nodeok)
+    
+    #gyerekek a fában (nodeok listája)
     self.children=[]
-    #még nem nézett lépések
+    
+    #még nem nézett leheséges lépések ebből a pozícióból
     vboard.set_fen(state)
     self.not_visited=list(vboard.legal_moves)
+    
     #szülő a fában
     self.parent=None
-    #number of simulations
+    
+    #Lefuttatott kiértékelések a leszármazottaiból
     self.N=0
-    #number of wins
+    
+    #a leszármazottak kiértékeléseinek összértéke
     self.w=0
-    #a lépés, amivel ideérkeztünk
+    
+    #a lépés, amivel ideérkezhetünk a szülőből
     self.action = ''
   
   def __str__(self):
@@ -33,14 +42,14 @@ class Node():
     
 def ucb(node):
   '''
-  Returns the UCB value of the given node
+  Kiszámolja a bemeneti node objektum aktuális UCB értékét
   '''
   result = node.w+c*math.sqrt((math.log(node.parent.N)+10**-6)/(node.N+10**-10))
   return result
 
 def rollout(node):
   '''
-  Plays out a random game, on the given node's board
+  Az imput node állásából lejátszik egy menetet random lépésekkel
   '''
   vboard.set_fen(node.state)
 
@@ -56,20 +65,24 @@ def rollout(node):
   return 0
   
 def selection(node):
-  
   '''
   Kezdetben vagyunk a gyökérben. Ált esetben egy csúcsban vagyunk.  
   Ha van olyan gyereke az adott csúcsnak, amit még nem vizsgáltunk, visszaadjuk ezt a csúcsot.
-  Ha nincs ilyen gyereke a vizsgált csúcsnak, vasszük a gyerekek közül a maxUCB értékűt. És erre a selection() 
+  Ha nincs ilyen gyereke a vizsgált csúcsnak, vasszük a gyerekek közül a maxUCB értékűt és erre hívjuk meg a selection() függvényt 
   '''
+  #Ha levélben állunk, visszaadjuk a csúcsot
   if node.not_visited:
     return node
-  #A gyerekekből a max UCB értékűt kiválasztani
+  #A gyerekekből a max UCB értékűt (legérdekesebbet) kiválasztani
   maxUCB_child=max(node.children, key=lambda i: ucb(i))
   #és meghívni rá a selection-t
   return selection(maxUCB_child)
 
 def expansion(node):
+  '''
+  Egy adott levélnek egy lehetséges lépését hozzá akarjuk adni a fához. Létrehozunk egy 'child' csúcsot az input még meg nem nézett lépéseiből az egyiket meglépve.
+  Ennek a megfelelő adattagjait beállítjuk, illetve a szülő még nem látott gyerekeiből kitöröljük és hozzáadjuk a már látott gyerekekhez.
+  '''
   #move-ot kiválasztani, és törölni a moveot a parent.not_visited listából
   move=random.choice(node.not_visited)
   node.not_visited.remove(move)
@@ -86,12 +99,16 @@ def expansion(node):
   return child
 
 def rollback(node, result):
+  '''
+  Egy új kiértékeléssel frissítjük a fában az input csúcsot és az őseit.
+  '''
   node.w += result
   node.N += 1
   if node.parent!=None:
     rollback(node.parent, result)
 
 def make_move(board, time_limit):
+  
   root=Node(board.fen())
   play_as = chess.WHITE
   #amíg van idő, addig selection, expansion, rollout, rollback, repeat
