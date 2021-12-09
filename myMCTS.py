@@ -4,7 +4,7 @@ import random
 import datetime
 
 #exploration constant
-c=2
+c=10
 #VIRTUAL BOARD
 vboard = chess.Board()
 #Melyik játékosként játszunk?
@@ -17,6 +17,12 @@ class Node():
   def __init__(self, state):
     #milyen játékállás ez, fen stringként
     self.state=state
+    #melyik játékos jön
+    p=state.split()[1]
+    if p == 'w':
+        self.player=1
+    else:
+        self.player=-1
     #gyerekek a fában (nodeok)
     self.children=[]
     #még nem nézett lépések
@@ -26,7 +32,7 @@ class Node():
     self.parent=None
     #a leszármazottaiból lefuttatott kiértékelések száma
     self.N=0
-    ##a leszármazottak kiértékeléseinek összértéke
+    #a leszármazottak kiértékeléseinek összértéke
     self.w=0
     #a lépés, amivel ideérkeztünk
     self.action = ''
@@ -60,9 +66,8 @@ def eval(node):
   '''
   Világosként megnézzük, hogy nyertünk-e, ha nem összeadjuk a pályán lévő figurák értékét. Így értékeljük az állást.
   '''
-  #A győzelem értéke:
   winWt=10
-  #Ha vége a játéknak, adjuk vissza a győzelem hírét a győzelem súlyával!
+
   if node.outcome != None:
     return node.outcome*winWt
   p=pieces(node.state)
@@ -74,10 +79,10 @@ def eval(node):
   pawnWt=1
   # score max = 39 egyik készletre nézve
   score=queenWt*(p['Q']-p['q']) + rookWt*(p['R']-p['r']) + knightWt*(p['N']-p['n']) + bishopWt*(p['B']-p['b']) + pawnWt*(p['P']-p['p'])
-  #return score/30
-  return math.tanh(score)/(score+1.01)
+  return score/30
+  #return math.tanh(score)/(score+1.01)
   
-def selection(node):
+def selection(node, play_as):
   
   '''
   Kezdetben vagyunk a gyökérben. Ált esetben egy csúcsban vagyunk.  
@@ -89,9 +94,13 @@ def selection(node):
     return node
   #A gyerekekből a max UCB értékűt kiválasztani
   if node.outcome==None:
-    maxUCB_child=max(node.children, key=lambda i: ucb(i))
+    #min-max search
+    if node.player==play_as:
+        maxUCB_child=max(node.children, key=lambda i: ucb(i))
+    else:
+        maxUCB_child=min(node.children, key=lambda i: ucb(i))
     #és meghívni rá a selection-t
-    return selection(maxUCB_child)
+    return selection(maxUCB_child, play_as)
   #Ha vége van a játéknak, nem tudunk innen tovább lépni.
   return node
 
@@ -159,19 +168,17 @@ def make_move(board, time_limit):
   begin = datetime.datetime.utcnow()
   while datetime.datetime.utcnow() - begin < datetime.timedelta(seconds=time_limit):
     #A selection megad egy olyan leszármazottat, aminek van még nem vizsgált lépése
-    child=selection(root)
-    #Ha nincs vége a játéknak
+    child=selection(root, play_as)
     if child.outcome==None:
       #Létrehoz egy eddig nem vizsgált játékállást
       new_child = expansion(child)
-    #Ha vége van a játéknak
     else:
       new_child=child
-      pass
     #Frissíti az új gyerek őseinek az értékelését az új gyerek értékétől függően
     rollback(new_child, play_as*eval(new_child))
-    
+  print('\n', play_as)
   print('#simulations = ', root.N)# - testing stuff
   best_child = max(root.children, key=lambda i: i.w/i.N)
-  print('best_eval', play_as*eval(best_child))# - testing stuff
+  print('best_eval = ', eval(best_child))# - testing stuff
+  #print('root', root)
   return best_child.action
